@@ -29,14 +29,29 @@ the admin info panel.
 
 ### Login note
 
-The router's login page (`login.cgi`) encrypts the password with a hardcoded
-RSA key (PKCS#1 v1.5 + base64) — NetGuard implements exactly that flow, but the
-factory password from the label is **rejected** by the router
-(`index.html?msg=err`), which means the admin password was changed from the
-default. That is not a blocker: the router's home page publishes the whole
-admin state (client list, WAN, DNS, SSID, firmware) without authentication, and
-that is what NetGuard reads. Set the *real* admin password in `config.yaml` and
-NetGuard will log in automatically to reach the deeper pages.
+The login page looks like it posts to `login.cgi`, but the firmware nests the
+login form inside another `<form>` tag, so the browser really submits
+`document.forms[0]` - no `method`, no `action` - which means a **GET request
+to `/`** carrying the RSA-encrypted password. NetGuard implements exactly that
+(including the RSA PKCS#1 v1.5 + base64 encryption the firmware uses).
+
+Current admin credentials: user `admin`, password `Faratoon34#` - the login
+works and NetGuard reads the authenticated pages.
+
+### Write access is ISP-locked
+
+The three parental-control pages exist and NetGuard drives them
+(`netguard/services/telus.py`):
+
+* Website Blocking -> `urlfilter.cmd` (`action=set_url`)
+* Services Blocking -> `serv_block.cmd` (`rules=<ip>/<mask>|`, `command=add`)
+* Scheduling Access -> `detail_access.tod` (`action=add`, `mac`, `days`, times)
+
+However the modem answers every write with its generic *Thank you* page and
+**stores nothing** (`allRule` / `rules` stay empty), so the TELUS firmware
+rejects configuration changes made through the admin GUI. That is why NetGuard
+enforces the filtering with its own **DNS filter server** instead - see
+[docs/dns-filter-setup.md](dns-filter-setup.md).
 
 ## Safety
 
