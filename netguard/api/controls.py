@@ -227,6 +227,35 @@ def add_blocklist_bulk(payload: BlocklistBulk, session: Session = Depends(get_se
     return {"added": added}
 
 
+@router.post("/blocklist/import-file", status_code=201)
+def import_blocklist_file(
+    path: str | None = None, category: str = "adult", session: Session = Depends(get_session)
+) -> dict[str, Any]:
+    """Import a plain-text domain list (one domain per line).
+
+    Uses `filtering.blocklist_file` from the config when no path is given.
+    """
+    import os
+
+    target = path or STATE.config.filtering.blocklist_file
+    if not target or not os.path.exists(target):
+        raise HTTPException(status_code=404, detail="blocklist file not found")
+    added = 0
+    with open(target, "r", encoding="utf-8", errors="ignore") as handle:
+        for line in handle:
+            line = line.split("#")[0].strip()
+            domain = normalize_domain(line)
+            if not domain or "/" in domain:
+                continue
+            existing = session.scalars(select(BlocklistEntry).where(BlocklistEntry.domain == domain)).first()
+            if existing:
+                continue
+            session.add(BlocklistEntry(domain=domain, category=category, source="import"))
+            added += 1
+    session.flush()
+    return {"added": added, "file": target}
+
+
 @router.delete("/blocklist/{entry_id}")
 def delete_blocklist(entry_id: int, session: Session = Depends(get_session)) -> dict[str, str]:
     entry = session.get(BlocklistEntry, entry_id)
@@ -295,7 +324,14 @@ def evaluate(
             if policy.kind == "app" and app and policy.value.lower() == app.lower():
                 return Decision(False, f"allow rule #{policy.id}", policy.category, policy.id)
 
-    # 2) explicit block rules
+    # 2) device level restrictions (whole device blocked / no internet)
+    if device is not None:
+        if device.is_quarantined:
+            return Decision(True, "device quarantined (no internet allowed)", "quarantine", device.id)
+        if device.is_blocked:
+            return Decision(True, "device is blocked", "device", device.id)
+
+    # 3) explicit block rules
     for policy in policies:
         if policy.action != "block" or not applies(policy):
             continue
