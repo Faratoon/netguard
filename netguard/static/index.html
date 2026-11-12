@@ -115,6 +115,21 @@
       </div>
 
       <div class="card">
+        <h3>DNS filter (blocks adult sites)</h3>
+        <p class="hint">NetGuard runs a DNS server. Devices that use it get blocked sites (0.0.0.0) while everything else works normally.</p>
+        <div id="dns-status" class="kv"></div>
+        <button id="btn-dns-start">Start DNS filter</button>
+        <button id="btn-dns-stop" class="ghost">Stop</button>
+        <div id="dns-instructions" class="list"></div>
+        <h3 style="margin-top:14px">Test a lookup</h3>
+        <input id="dns-domain" placeholder="site.com" />
+        <input id="dns-client" placeholder="client IP (e.g. 192.168.1.68)" />
+        <button id="btn-dns-lookup">Lookup</button>
+        <div id="dns-result" class="result"></div>
+        <div id="dns-recent" class="list"></div>
+      </div>
+
+      <div class="card">
         <h3>Push rules to router</h3>
         <p class="hint">Dry-run shows the exact commands. Enable live mode in Admin &gt; Settings to push them.</p>
         <button id="btn-apply">Preview commands</button>

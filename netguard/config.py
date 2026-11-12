@@ -57,11 +57,23 @@ class MonitoringConfig:
 
 
 @dataclass
+class DnsFilterConfig:
+    """NetGuard's own DNS filter (point devices at it to block adult sites)."""
+
+    enabled: bool = False
+    host: str = "0.0.0.0"
+    port: int = 53
+    upstream: list[str] = field(default_factory=lambda: ["1.1.1.1", "8.8.8.8"])
+    log_blocks: bool = True
+
+
+@dataclass
 class AppConfig:
     router: RouterConfig = field(default_factory=RouterConfig)
     filtering: FilteringConfig = field(default_factory=FilteringConfig)
     storage: StorageConfig = field(default_factory=StorageConfig)
     monitoring: MonitoringConfig = field(default_factory=MonitoringConfig)
+    dns_filter: DnsFilterConfig = field(default_factory=DnsFilterConfig)
     host: str = "0.0.0.0"
     port: int = 8080
     api_token: str | None = None
@@ -112,6 +124,7 @@ def load_config(path: str | Path | None = None) -> AppConfig:
     app.filtering = _build(FilteringConfig, raw.get("filtering"))
     app.storage = _build(StorageConfig, raw.get("storage"))
     app.monitoring = _build(MonitoringConfig, raw.get("monitoring"))
+    app.dns_filter = _build(DnsFilterConfig, raw.get("dns_filter"))
     return app
 
 
@@ -149,6 +162,13 @@ def save_config(cfg: AppConfig, path: str | Path | None = None) -> Path:
             "speedtest_enabled": cfg.monitoring.speedtest_enabled,
             "speedtest_timeout": cfg.monitoring.speedtest_timeout,
             "default_ping_target": cfg.monitoring.default_ping_target,
+        },
+        "dns_filter": {
+            "enabled": cfg.dns_filter.enabled,
+            "host": cfg.dns_filter.host,
+            "port": cfg.dns_filter.port,
+            "upstream": cfg.dns_filter.upstream,
+            "log_blocks": cfg.dns_filter.log_blocks,
         },
         "host": cfg.host,
         "port": cfg.port,

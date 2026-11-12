@@ -22,6 +22,7 @@ per-device rules, curfews and network speed/load monitoring.
 | **Router admin data** | Model, firmware, uptime, CPU/memory/load, WAN IP + gateway, DNS servers, DHCP pool, Wi-Fi radios, raw `ubus` payload |
 | **Speed & load** | Speed test (download/upload/latency), ping, traceroute, DNS lookup, subnet scan, port scan, per-interface counters, traffic history chart |
 | **Parental controls** | DNS-level content filtering (adult/social/gaming/risky categories), per-device rules for domain / app / IP / MAC, allow-rules that override blocks |
+| **DNS filter server** | NetGuard runs its own DNS server - blocked domains resolve to `0.0.0.0`, everything else is forwarded. Point a phone/laptop at it and adult sites simply do not resolve. See [docs/dns-filter-setup.md](docs/dns-filter-setup.md) |
 | **Curfews** | Time windows per device, e.g. 21:00–07:00 safe mode or full internet cut-off |
 | **App & mic blocking** | Block apps that use the microphone/camera (Discord, TikTok, Snapchat, Zoom…) by blocking their domains — the app stops working on that device |
 | **Image management** | Upload device photos or router admin screenshots, capture what a blocked page looks like (Playwright), auto-generated SVG network topology map |
@@ -41,6 +42,18 @@ uvicorn netguard.main:app --host 0.0.0.0 --port 8080
 
 Open <http://localhost:8080>. With `router.vendor: mock` you get a fully working
 dashboard populated with fake devices — good for trying things out.
+
+## Running on Windows (recommended for a home LAN)
+
+```bat
+scripts\setup_windows.bat        :: creates .venv and installs the dependencies
+scripts\start_windows.bat        :: starts NetGuard and opens the dashboard
+```
+
+The dashboard is then on **http://localhost:8765** on that PC and the DNS filter
+listens on port **53**, so other devices on the LAN can use it as their DNS
+server. (Port 8080 is often reserved by Hyper-V/WSL on Windows — that is why
+8765 is used; change it in `config.yaml` if you prefer another port.)
 
 ## Connect it to your real router
 

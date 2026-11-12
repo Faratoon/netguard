@@ -82,6 +82,7 @@ def detect_device_type(hostname: str | None, vendor: str | None) -> str:
 class AppState:
     config: AppConfig = field(default_factory=AppConfig)
     router: BaseRouter | None = None
+    dns_filter: Any = None
     started_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     def boot(self) -> None:

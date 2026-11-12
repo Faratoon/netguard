@@ -253,11 +253,51 @@ $('#btn-save-settings').onclick = async () => {
   alert('settings saved');
 };
 
+/* ------------------------------------------------------------------ dns */
+async function loadDns() {
+  try {
+    const s = await api('/api/dns/status');
+    const stats = s.stats || {};
+    $('#dns-status').innerHTML = kv([
+      ['Running', s.running ? 'yes' : 'no'],
+      ['Listening', `${s.host}:${s.port}`],
+      ['This machine', (s.listen || []).join(', ') || '-'],
+      ['Upstream DNS', (s.upstream || []).join(', ')],
+      ['Queries', stats.queries ?? '-'],
+      ['Blocked', stats.blocked ?? '-'],
+      ['Forwarded', stats.forwarded ?? '-'],
+      ['Error', s.error || '-'],
+    ]);
+    const recent = stats.recent || [];
+    $('#dns-recent').innerHTML = recent.length
+      ? recent.slice(0, 12).map((r) => `<div class="item"><span>${r.domain}<small>${r.client} - ${r.reason || ''}</small></span></div>`).join('')
+      : '<div class="hint">no blocked lookups yet</div>';
+  } catch (e) { /* ignore */ }
+  try {
+    const ins = await api('/api/dns/instructions');
+    $('#dns-instructions').innerHTML =
+      `<div class="item"><span>Use this DNS server<small>${ins.dns_server}</small></span></div>` +
+      ins.steps.map((s) => `<div class="item"><span>${s}</span></div>`).join('');
+  } catch (e) { /* ignore */ }
+}
+
+$('#btn-dns-start').onclick = async () => { await api('/api/dns/start', { method: 'POST' }); loadDns(); };
+$('#btn-dns-stop').onclick = async () => { await api('/api/dns/stop', { method: 'POST' }); loadDns(); };
+$('#btn-dns-lookup').onclick = async () => {
+  const res = await api('/api/dns/lookup', { method: 'POST', body: JSON.stringify({
+    domain: $('#dns-domain').value, client_ip: $('#dns-client').value || '192.168.1.50' }) });
+  const box = $('#dns-result');
+  box.textContent = `${res.domain} -> ${res.resolved_to} ${res.blocked ? '(' + res.reason + ')' : ''}`;
+  box.className = 'result ' + (res.blocked ? 'blocked' : 'allowed');
+};
+
 /* --------------------------------------------------------------- startup */
 (async function init() {
   await loadDashboard();
   await loadDevices();
   await loadControls();
+  await loadDns();
   await loadGallery();
   setInterval(loadDashboard, 30000);
+  setInterval(loadDns, 15000);
 })();

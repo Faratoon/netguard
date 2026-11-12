@@ -10,7 +10,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from .api import admin, controls, devices, media, network
+from .api import admin, controls, devices, dns, media, network
 from .config import load_config
 from .db import TrafficSample, get_engine
 from .state import STATE
@@ -38,6 +38,7 @@ def _sampler_loop(stop_event: threading.Event) -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     STATE.boot()
+    _start_dns_filter()
     stop_event = threading.Event()
     thread = threading.Thread(target=_sampler_loop, args=(stop_event,), daemon=True)
     thread.start()
@@ -45,6 +46,35 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         stop_event.set()
+        if STATE.dns_filter is not None:
+            STATE.dns_filter.stop()
+
+
+def _start_dns_filter() -> None:
+    """Start NetGuard's DNS filter server (blocking DNS for the whole LAN)."""
+    from sqlalchemy.orm import sessionmaker
+
+    from .services.dnsfilter import DnsFilterServer
+
+    cfg = STATE.config.dns_filter
+    if not cfg.enabled:
+        return
+    try:
+        factory = sessionmaker(bind=get_engine(), expire_on_commit=False)
+    except Exception:
+        return
+    server = DnsFilterServer(
+        host=cfg.host,
+        port=cfg.port,
+        upstream=cfg.upstream,
+        session_factory=factory,
+        default_categories=set(STATE.config.filtering.default_block_categories),
+        log_blocks=cfg.log_blocks,
+    )
+    STATE.dns_filter = server
+    server.start()
+    if not server._threads:
+        print(f"[netguard] DNS filter not started: {server.error}")
 
 
 app = FastAPI(
@@ -65,6 +95,7 @@ def verify_token(x_netguard_token: str | None = Header(default=None)) -> None:
 app.include_router(devices.router, dependencies=[Depends(verify_token)])
 app.include_router(controls.router, dependencies=[Depends(verify_token)])
 app.include_router(network.router, dependencies=[Depends(verify_token)])
+app.include_router(dns.router, dependencies=[Depends(verify_token)])
 app.include_router(admin.router, dependencies=[Depends(verify_token)])
 app.include_router(media.router, dependencies=[Depends(verify_token)])
 

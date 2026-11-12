@@ -107,29 +107,43 @@ class WebRouter(BaseRouter):
         response.raise_for_status()
         return response.text
 
+    def _collect_pages(self) -> None:
+        """Fetch the deeper pages (device list, firewall, parental control...)."""
+        client = self._http()
+        pages: list[str] = []
+        for path in EXTRA_PAGES:
+            try:
+                response = client.get(path)
+            except Exception:
+                continue
+            if response.status_code == 200 and response.text and "logout" in response.text.lower():
+                pages.append(response.text)
+        self._extra_pages = pages
+
     def refresh(self) -> None:
         """Download the home page (and, if logged in, the extra pages)."""
         client = self._http()
         self._html = client.get("/").text
         self._extra_pages = []
         if self._logged_in:
-            for path in EXTRA_PAGES:
-                try:
-                    response = client.get(path)
-                except Exception:
-                    continue
-                if response.status_code == 200 and response.text and "<html" in response.text.lower():
-                    self._extra_pages.append(response.text)
+            self._collect_pages()
 
     def login(self) -> bool:
-        """Try to log in to the admin UI (needed for the deeper device pages)."""
+        """Log in to the admin UI.
+
+        The firmware nests the login form inside another <form> tag, so the
+        browser really submits ``document.forms[0]`` — no ``method`` attribute
+        and no ``action`` — which means a **GET request to /** carrying the
+        login parameters. Posting to ``login.cgi`` (as the markup suggests)
+        always answers ``index.html?msg=err``.
+        """
         client = self._http()
         self.refresh()
         password = self.cfg.password or ""
         if not password:
             return False
 
-        payload = {
+        params = {
             "sessionKey": _js_value(self._html, "sessionKey") or "0",
             "sessionId": str(int.from_bytes(os.urandom(3), "big") % 799999999 + 1),
             "inputUserName": self.cfg.user or "",
@@ -137,12 +151,14 @@ class WebRouter(BaseRouter):
             "nothankyou": "1",
         }
         try:
-            response = client.post("/login.cgi", data=payload)
+            client.get("/", params=params)
+            response = client.get("/")
         except Exception:
             return False
-        self._logged_in = "msg=err" not in response.text
+        self._logged_in = "logout" in response.text.lower() and "msg=err" not in response.text
         if self._logged_in:
-            self.refresh()
+            self._html = response.text
+            self._collect_pages()
         return self._logged_in
 
     # ------------------------------------------------------------- status
