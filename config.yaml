@@ -1,0 +1,22 @@
+router:
+  vendor: mock
+  host: 192.168.1.1
+  port: 22
+  user: root
+  dry_run: true
+
+filtering:
+  enabled: true
+  default_block_categories:
+    - adult
+
+storage:
+  data_dir: ./data
+
+monitoring:
+  sample_interval_seconds: 60
+  speedtest_enabled: true
+
+host: 0.0.0.0
+port: 8080
+demo_mode: true

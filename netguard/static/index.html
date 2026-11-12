@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>NetGuard - Router & Network Dashboard</title>
+<link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+<header>
+  <h1>NetGuard</h1>
+  <div class="sub" id="router-line">connecting...</div>
+  <nav>
+    <button class="tab active" data-tab="dashboard">Dashboard</button>
+    <button class="tab" data-tab="devices">Devices</button>
+    <button class="tab" data-tab="controls">Parental Controls</button>
+    <button class="tab" data-tab="network">Network &amp; Speed</button>
+    <button class="tab" data-tab="images">Images</button>
+    <button class="tab" data-tab="admin">Admin Data</button>
+  </nav>
+</header>
+
+<main>
+  <!-- Dashboard -->
+  <section id="dashboard" class="panel active">
+    <div class="grid">
+      <div class="card">
+        <h3>Router</h3>
+        <div class="kv" id="card-router"></div>
+      </div>
+      <div class="card">
+        <h3>Counts</h3>
+        <div class="kv" id="card-counts"></div>
+      </div>
+      <div class="card">
+        <h3>Traffic (last 24h)</h3>
+        <div class="kv" id="card-traffic"></div>
+        <canvas id="traffic-chart" width="520" height="160"></canvas>
+      </div>
+      <div class="card">
+        <h3>Top talkers</h3>
+        <div class="kv" id="card-top"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Network map</h3>
+      <img id="topology" alt="network topology" src="/api/media/topology.svg" />
+    </div>
+  </section>
+
+  <!-- Devices -->
+  <section id="devices" class="panel">
+    <div class="toolbar">
+      <button id="btn-scan">Scan devices</button>
+      <span class="hint" id="device-count"></span>
+    </div>
+    <div id="device-list" class="grid"></div>
+  </section>
+
+  <!-- Controls -->
+  <section id="controls" class="panel">
+    <div class="grid">
+      <div class="card">
+        <h3>Block a domain / site</h3>
+        <input id="bl-domain" placeholder="example.com" />
+        <select id="bl-category">
+          <option>adult</option><option>social</option><option>gaming</option>
+          <option>video</option><option>risky</option><option>custom</option>
+        </select>
+        <button id="btn-add-block">Add to blocklist</button>
+        <button class="ghost" id="btn-import-presets">Import adult preset</button>
+        <div id="blocklist" class="list"></div>
+      </div>
+
+      <div class="card">
+        <h3>Device rule</h3>
+        <select id="pol-device"></select>
+        <select id="pol-kind">
+          <option value="domain">domain</option>
+          <option value="app">app</option>
+          <option value="ip">ip / subnet</option>
+          <option value="mac">mac</option>
+        </select>
+        <input id="pol-value" placeholder="value (e.g. discord or 192.168.1.30)" />
+        <select id="pol-action">
+          <option value="block">block</option>
+          <option value="allow">allow</option>
+        </select>
+        <button id="btn-add-policy">Add rule</button>
+        <div id="policies" class="list"></div>
+      </div>
+
+      <div class="card">
+        <h3>Curfew (time based)</h3>
+        <select id="cur-device"></select>
+        <div class="row">
+          <label>From <input id="cur-start" type="time" value="21:00" /></label>
+          <label>To <input id="cur-end" type="time" value="07:00" /></label>
+        </div>
+        <label>Days <input id="cur-days" value="0,1,2,3,4,5,6" /></label>
+        <select id="cur-action">
+          <option value="safe_mode">safe mode (block adult/social/gaming)</option>
+          <option value="block_internet">block internet entirely</option>
+        </select>
+        <button id="btn-add-curfew">Add curfew</button>
+        <div id="curfews" class="list"></div>
+      </div>
+
+      <div class="card">
+        <h3>Test a request</h3>
+        <input id="chk-domain" placeholder="site.com" />
+        <select id="chk-device"><option value="">global</option></select>
+        <button id="btn-check">Check</button>
+        <div id="check-result" class="result"></div>
+      </div>
+
+      <div class="card">
+        <h3>Push rules to router</h3>
+        <p class="hint">Dry-run shows the exact commands. Enable live mode in Admin &gt; Settings to push them.</p>
+        <button id="btn-apply">Preview commands</button>
+        <button id="btn-apply-live" class="danger">Push to router</button>
+        <pre id="apply-output" class="code"></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- Network -->
+  <section id="network" class="panel">
+    <div class="grid">
+      <div class="card">
+        <h3>Speed test</h3>
+        <button id="btn-speed">Run speed test</button>
+        <pre id="speed-out" class="code"></pre>
+      </div>
+      <div class="card">
+        <h3>Ping</h3>
+        <input id="ping-host" value="1.1.1.1" />
+        <button id="btn-ping">Ping</button>
+        <pre id="ping-out" class="code"></pre>
+      </div>
+      <div class="card">
+        <h3>Traceroute</h3>
+        <input id="trace-host" value="1.1.1.1" />
+        <button id="btn-trace">Traceroute</button>
+        <pre id="trace-out" class="code"></pre>
+      </div>
+      <div class="card">
+        <h3>Subnet scan</h3>
+        <input id="scan-cidr" value="192.168.1.0/24" />
+        <button id="btn-scan-net">Scan</button>
+        <pre id="scan-out" class="code"></pre>
+      </div>
+      <div class="card">
+        <h3>Router status</h3>
+        <button id="btn-status">Refresh</button>
+        <pre id="status-out" class="code"></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- Images -->
+  <section id="images" class="panel">
+    <div class="grid">
+      <div class="card">
+        <h3>Upload image</h3>
+        <p class="hint">Device photos, router admin screenshots, receipts of blocked pages...</p>
+        <input type="file" id="img-file" accept="image/*" />
+        <input id="img-title" placeholder="title" />
+        <button id="btn-upload">Upload</button>
+      </div>
+      <div class="card">
+        <h3>Gallery</h3>
+        <div id="gallery" class="gallery"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Admin -->
+  <section id="admin" class="panel">
+    <div class="grid">
+      <div class="card">
+        <h3>Router admin data</h3>
+        <button id="btn-admin-info">Refresh</button>
+        <pre id="admin-out" class="code"></pre>
+      </div>
+      <div class="card">
+        <h3>Settings</h3>
+        <div id="settings-form"></div>
+        <button id="btn-save-settings">Save</button>
+      </div>
+      <div class="card">
+        <h3>Capabilities</h3>
+        <pre id="tools-out" class="code"></pre>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

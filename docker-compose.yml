@@ -1,0 +1,18 @@
+services:
+  netguard:
+    build: .
+    container_name: netguard
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - ./data:/app/data
+    environment:
+      NETGUARD_ROUTER_VENDOR: ${NETGUARD_ROUTER_VENDOR:-openwrt}
+      NETGUARD_ROUTER_HOST: ${NETGUARD_ROUTER_HOST:-192.168.1.1}
+      NETGUARD_ROUTER_USER: ${NETGUARD_ROUTER_USER:-root}
+      NETGUARD_ROUTER_PASSWORD: ${NETGUARD_ROUTER_PASSWORD:-}
+      NETGUARD_ROUTER_KEY: ${NETGUARD_ROUTER_KEY:-}
+      NETGUARD_DRY_RUN: ${NETGUARD_DRY_RUN:-true}
+      NETGUARD_API_TOKEN: ${NETGUARD_API_TOKEN:-}

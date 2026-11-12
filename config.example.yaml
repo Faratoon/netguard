@@ -1,0 +1,40 @@
+# NetGuard configuration.
+# Copy to config.yaml and adjust. Every value can also be set via environment
+# variables (see README).
+
+router:
+  vendor: openwrt          # openwrt | generic-ssh | mock
+  host: 192.168.1.1
+  port: 22
+  user: root
+  password: null           # set in config only on a trusted machine (or use a key)
+  key_file: null           # e.g. ~/.ssh/id_ed25519
+  wan_interface: wan
+  lan_interface: lan
+  dnsmasq_hosts_file: /tmp/netguard/hosts.d/netguard-blocked
+  dry_run: true            # true = never touch the router, only preview commands
+  timeout: 15
+
+filtering:
+  enabled: true
+  default_block_categories:
+    - adult
+  allowlist_domains: []
+  blocklist_file: null     # optional text file with one domain per line
+
+storage:
+  data_dir: ./data
+  database_url: null       # e.g. postgresql+psycopg://user:pass@host/netguard
+  max_upload_mb: 10
+
+monitoring:
+  sample_interval_seconds: 60
+  retention_days: 30
+  speedtest_enabled: true
+  speedtest_timeout: 30
+  default_ping_target: 1.1.1.1
+
+host: 0.0.0.0
+port: 8080
+api_token: null           # if set, requests must send X-NetGuard-Token
+demo_mode: false
