@@ -61,7 +61,7 @@ def detect_vendor(mac: str) -> str | None:
 def detect_device_type(hostname: str | None, vendor: str | None) -> str:
     name = (hostname or "").lower()
     vendor_l = (vendor or "").lower()
-    if any(k in name for k in ("phone", "iphone", "android", "pixel", "galaxy", "samsung", "mobile")):
+    if any(k in name for k in ("phone", "iphone", "android", "pixel", "galaxy", "mobile")):
         return "phone"
     if any(k in name for k in ("ipad", "tablet", "kindle")):
         return "tablet"
@@ -71,7 +71,7 @@ def detect_device_type(hostname: str | None, vendor: str | None) -> str:
         return "pc"
     if any(k in name for k in ("echo", "alexa", "nest", "sonos", "camera", "cam", "doorbell", "printer", "chromebit")):
         return "iot"
-    if "apple" in vendor_l:
+    if "apple" in vendor_l or "samsung" in vendor_l:
         return "phone"
     if "raspberry" in vendor_l:
         return "iot"

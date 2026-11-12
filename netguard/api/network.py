@@ -91,6 +91,13 @@ def collect_sample(session: Session = Depends(get_session)) -> dict[str, Any]:
             except ValueError:
                 continue
 
+    if not counters:
+        # ISP routers with a web admin UI do not expose /proc/net/dev -
+        # fall back to the counters of the machine running NetGuard.
+        local = nettools.local_interfaces()
+        for row in local.detail.get("interfaces", []) if local.ok else []:
+            counters[row["interface"]] = (row["rx_bytes"], row["tx_bytes"])
+
     total_rx = sum(rx for rx, _ in counters.values())
     total_tx = sum(tx for _, tx in counters.values())
     prev_rx, prev_tx = _last_counters.get("__total__", (0, 0))

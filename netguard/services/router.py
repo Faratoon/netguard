@@ -278,6 +278,10 @@ def build_router(cfg: RouterConfig) -> BaseRouter:
         return MockRouter(cfg)
     if vendor in {"openwrt", "generic-ssh", "ssh", "lede"}:
         return SSHRouter(cfg)
+    if vendor in {"web", "http", "telus", "isp"}:
+        from .web_router import WebRouter
+
+        return WebRouter(cfg)
     raise RouterError(f"unsupported router vendor: {cfg.vendor}")
 
 

@@ -44,7 +44,23 @@ dashboard populated with fake devices — good for trying things out.
 
 ## Connect it to your real router
 
-1. Edit `config.yaml`:
+### TELUS T3200M (ISP modem, no SSH)
+
+The T3200M only exposes its own web admin page, so NetGuard logs into it over
+HTTP and scrapes the client list (`router.vendor: web`). Credentials come from
+the label on the bottom of the router — see
+[docs/router-admin-label.md](docs/router-admin-label.md).
+
+```yaml
+router:
+  vendor: web
+  host: 192.168.1.254
+  user: admin
+  password: <admin password from the label>
+  dry_run: true
+```
+
+### OpenWrt / any router with SSH
 
 ```yaml
 router:
@@ -55,11 +71,11 @@ router:
   dry_run: true                    # keep true while testing
 ```
 
-2. Make sure SSH is enabled on the router and your key is in `~/.ssh/authorized_keys`.
-3. Open the **Admin Data** tab, press *Refresh*. You should see the router model,
+1. Make sure SSH is enabled on the router and your key is in `~/.ssh/authorized_keys`.
+2. Open the **Admin Data** tab, press *Refresh*. You should see the router model,
    firmware, WAN IP and memory usage.
-4. Press **Scan devices** — the client list is merged into the local inventory.
-5. When you are happy with the rules, set `dry_run: false` and use
+3. Press **Scan devices** — the client list is merged into the local inventory.
+4. When you are happy with the rules, set `dry_run: false` and use
    *Push to router* (or the `POST /api/controls/apply` endpoint) to write the
    dnsmasq blocklist and the per-device firewall rules.
 
