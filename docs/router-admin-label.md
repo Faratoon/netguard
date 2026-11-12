@@ -8,11 +8,14 @@ Data read from the sticker on the bottom of the router:
 | Model | Wi-Fi Modem **T3200M** |
 | Admin page | **http://192.168.1.254** |
 | Admin user | `admin` |
-| Admin password | `a5aa8z2w2` |
+| Admin password | `a5aa8zw2` |
 | Wi-Fi SSID | `TELUS9630` |
-| Wi-Fi password | `crfd6y4f8h` |
-| Serial number | `GT8A706309630` |
+| Wi-Fi password | `crdfy4f8h` |
+| Serial number | `GTBA706309630` |
 | MAC address | `10785BD435A1` |
+
+> Read from the label photo at 2x zoom — the admin password is `a5aa8zw2`
+> (8 characters, no digits swapped) and the Wi-Fi password is `crdfy4f8h`.
 
 ## How NetGuard uses this
 
@@ -23,6 +26,17 @@ admin credentials, reads the status/device pages and extracts the client list
 
 The device MAC `10:78:5B:D4:35:A1` belongs to the router itself and is shown in
 the admin info panel.
+
+### Login note
+
+The router's login page (`login.cgi`) encrypts the password with a hardcoded
+RSA key (PKCS#1 v1.5 + base64) — NetGuard implements exactly that flow, but the
+factory password from the label is **rejected** by the router
+(`index.html?msg=err`), which means the admin password was changed from the
+default. That is not a blocker: the router's home page publishes the whole
+admin state (client list, WAN, DNS, SSID, firmware) without authentication, and
+that is what NetGuard reads. Set the *real* admin password in `config.yaml` and
+NetGuard will log in automatically to reach the deeper pages.
 
 ## Safety
 

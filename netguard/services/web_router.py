@@ -191,6 +191,11 @@ class WebRouter(BaseRouter):
         st.raw["wifi_auth"] = _js_value(text, "gv_wlAuthMode")
         st.raw["firewall_level"] = _js_value(text, "fwLevel")
         st.raw["authenticated"] = self._logged_in
+        st.raw["login_note"] = (
+            "logged in with the admin password"
+            if self._logged_in
+            else "reading the public admin data - the configured admin password was rejected by the router"
+        )
         st.raw["captured_at"] = None
         if st.raw["ssid"]:
             st.wireless = [{"radio": "radio0", "ssid": st.raw["ssid"], "up": True}]
