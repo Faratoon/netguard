@@ -248,6 +248,55 @@ $('#btn-save-settings').onclick = async () => {
   alert('settings saved');
 };
 
+/* ------------------------------------------------------------ night mode */
+async function loadNightMode() {
+  try {
+    const data = await api('/api/controls/wellbeing');
+    $('#wellbeing').innerHTML = data.devices.map((d) => `
+      <div class="item">
+        <span>${d.name}<small>${d.ip || ''} ${d.curfews ? '- ' + d.curfews + ' curfew(s)' : ''}</small></span>
+        <span>${d.state === 'cut'
+          ? `<span class="badge on">internet cut</span>`
+          : d.state === 'safe_mode'
+            ? `<span class="badge safe">safe mode</span>`
+            : (d.is_safe_mode ? '<span class="badge safe">safe mode</span>' : '<span class="badge ok">free</span>')}</span>
+      </div>`).join('');
+  } catch (e) { /* ignore */ }
+
+  try {
+    const devices = await api('/api/devices');
+    $('#night-devices').innerHTML = devices.devices.map((d) => `
+      <label style="display:flex;align-items:center;gap:8px;margin:2px 0">
+        <input type="checkbox" class="night-dev" value="${d.id}" style="width:auto;margin:0"
+               ${['phone', 'tablet'].includes(d.device_type) ? 'checked' : ''}>
+        <span>${d.friendly_name || d.hostname || d.mac} <small style="color:var(--muted)">${d.ip || ''}</small></span>
+      </label>`).join('');
+  } catch (e) { /* ignore */ }
+}
+
+$('#btn-night-save').onclick = async () => {
+  const ids = [...document.querySelectorAll('.night-dev:checked')].map((el) => Number(el.value));
+  if (!ids.length) return alert('select at least one phone');
+  const res = await api('/api/controls/curfews/bulk', { method: 'POST', body: JSON.stringify({
+    device_ids: ids,
+    days: $('#night-days').value,
+    start_time: $('#night-start').value,
+    end_time: $('#night-end').value,
+    action: $('#night-action').value,
+    label: 'Night mode',
+  }) });
+  alert(`night mode saved for ${res.created} device(s)`);
+  loadControls();
+  loadNightMode();
+};
+
+$('#btn-night-clear').onclick = async () => {
+  const list = await api('/api/controls/curfews');
+  for (const c of list.curfews) await api(`/api/controls/curfews/${c.id}`, { method: 'DELETE' });
+  loadControls();
+  loadNightMode();
+};
+
 /* ------------------------------------------------------- category lists */
 async function loadCategories() {
   try {
@@ -348,8 +397,10 @@ $('#btn-dns-lookup').onclick = async () => {
   await loadDevices();
   await loadControls();
   await loadCategories();
+  await loadNightMode();
   await loadDns();
   await loadGallery();
   setInterval(loadDashboard, 30000);
   setInterval(loadDns, 15000);
+  setInterval(loadNightMode, 30000);
 })();

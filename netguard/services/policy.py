@@ -20,6 +20,25 @@ __all__ = [
 ]
 
 
+def local_now() -> datetime:
+    """Current time in the configured timezone (falls back to system time)."""
+    tz_name = None
+    try:
+        from ..state import STATE
+
+        tz_name = STATE.config.timezone
+    except Exception:
+        tz_name = None
+    if tz_name:
+        try:
+            from zoneinfo import ZoneInfo
+
+            return datetime.now(ZoneInfo(tz_name))
+        except Exception:
+            pass
+    return datetime.now()
+
+
 def device_categories(device: Device | None, default_categories: set[str] | None = None) -> set[str]:
     """Categories that are blocked for this device."""
     cats = set(default_categories or {"adult"})
@@ -55,7 +74,10 @@ def evaluate(
     default_categories: set[str] | None = None,
 ) -> Decision:
     """Decide whether a request must be blocked, and why."""
-    now = now or datetime.now(timezone.utc)
+    # curfews are evaluated in the configured timezone (falling back to the
+    # local time of the machine) - that is the time the family sees on their
+    # phones.
+    now = now or local_now()
     domain = normalize_domain(domain or "")
     targets: list[str] = []
     if domain:

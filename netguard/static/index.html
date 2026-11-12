@@ -120,6 +120,25 @@
       </div>
 
       <div class="card">
+        <h3>Night mode (auto block at night)</h3>
+        <p class="hint">Pick the phones, set the time window and NetGuard cuts their internet automatically - no action needed every evening.</p>
+        <div id="night-devices" class="list"></div>
+        <div class="row">
+          <label>From <input id="night-start" type="time" value="21:00" /></label>
+          <label>To <input id="night-end" type="time" value="07:00" /></label>
+        </div>
+        <label>Days <input id="night-days" value="0,1,2,3,4,5,6" /></label>
+        <select id="night-action">
+          <option value="block_internet">Cut the internet completely</option>
+          <option value="safe_mode">Safe mode (block adult + gaming + social)</option>
+        </select>
+        <button id="btn-night-save">Save night mode for the selected phones</button>
+        <button id="btn-night-clear" class="ghost">Remove all curfews</button>
+        <h3 style="margin-top:14px">Digital balance</h3>
+        <div id="wellbeing" class="list"></div>
+      </div>
+
+      <div class="card">
         <h3>Curfew (time based)</h3>
         <select id="cur-device"></select>
         <div class="row">

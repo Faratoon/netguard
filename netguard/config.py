@@ -78,6 +78,7 @@ class AppConfig:
     port: int = 8080
     api_token: str | None = None
     demo_mode: bool = False
+    timezone: str | None = None  # e.g. America/Toronto - used for curfews
 
     @property
     def data_path(self) -> Path:
@@ -174,6 +175,7 @@ def save_config(cfg: AppConfig, path: str | Path | None = None) -> Path:
         "port": cfg.port,
         "api_token": cfg.api_token,
         "demo_mode": cfg.demo_mode,
+        "timezone": cfg.timezone,
     }
     cfg_path.write_text(yaml.safe_dump(data, sort_keys=False))
     return cfg_path
@@ -200,4 +202,6 @@ def _env_overrides() -> dict[str, Any]:
         out.setdefault("storage", {})["data_dir"] = env["NETGUARD_DATA_DIR"]
     if env.get("NETGUARD_DEMO") is not None:
         out["demo_mode"] = env["NETGUARD_DEMO"].lower() in {"1", "true", "yes"}
+    if env.get("NETGUARD_TIMEZONE"):
+        out["timezone"] = env["NETGUARD_TIMEZONE"]
     return out

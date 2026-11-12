@@ -47,6 +47,16 @@ class CurfewIn(BaseModel):
     enabled: bool = True
 
 
+class CurfewBulkIn(BaseModel):
+    device_ids: list[int]
+    label: str | None = None
+    days: str = "0,1,2,3,4,5,6"
+    start_time: str = "21:00"
+    end_time: str = "07:00"
+    action: str = Field(default="block_internet", pattern="^(safe_mode|block_internet)$")
+    enabled: bool = True
+
+
 class BlocklistIn(BaseModel):
     domain: str
     category: str = "adult"
@@ -138,7 +148,7 @@ def list_curfews(session: Session = Depends(get_session)) -> dict[str, Any]:
             {
                 "id": c.id,
                 "device_id": c.device_id,
-                "device_name": c.device.friendly_name if c.device else None,
+                "device_name": (c.device.friendly_name or c.device.hostname or c.device.mac) if c.device else None,
                 "label": c.label,
                 "days": c.days,
                 "start_time": c.start_time,
@@ -160,6 +170,79 @@ def create_curfew(payload: CurfewIn, session: Session = Depends(get_session)) ->
     session.add(curfew)
     session.flush()
     return {"id": curfew.id, "status": "created"}
+
+
+@router.post("/curfews/bulk", status_code=201)
+def create_curfews_bulk(payload: CurfewBulkIn, session: Session = Depends(get_session)) -> dict[str, Any]:
+    """Create the same curfew on several devices at once (the night mode)."""
+    created = 0
+    for device_id in payload.device_ids:
+        if not session.get(Device, device_id):
+            continue
+        session.add(
+            Curfew(
+                device_id=device_id,
+                label=payload.label or "Night mode",
+                days=payload.days,
+                start_time=payload.start_time,
+                end_time=payload.end_time,
+                action=payload.action,
+                enabled=True,
+            )
+        )
+        created += 1
+    session.flush()
+    return {"created": created, "devices": payload.device_ids}
+
+
+@router.get("/wellbeing")
+def digital_balance(session: Session = Depends(get_session)) -> dict[str, Any]:
+    """A quick view of the screen-time rules per device."""
+    from datetime import datetime, timedelta, timezone
+
+    from ..services.rules import remaining_curfew_time
+
+    from ..services.policy import local_now
+
+    now = local_now()
+    devices = session.scalars(select(Device).order_by(Device.id)).all()
+    rows = []
+    for device in devices:
+        active = None
+        next_start = None
+        for curfew in device.curfews:
+            if not curfew.enabled:
+                continue
+            if curfew.action == "block_internet" and in_schedule(now, curfew.days, curfew.start_time, curfew.end_time):
+                active = {
+                    "type": "cut",
+                    "label": curfew.label or f"curfew {curfew.id}",
+                    "until": curfew.end_time,
+                    "remaining": str(remaining_curfew_time(now, curfew.start_time, curfew.end_time)),
+                }
+                break
+            if curfew.action == "safe_mode" and in_schedule(now, curfew.days, curfew.start_time, curfew.end_time):
+                active = {
+                    "type": "safe_mode",
+                    "label": curfew.label or f"curfew {curfew.id}",
+                    "until": curfew.end_time,
+                    "remaining": str(remaining_curfew_time(now, curfew.start_time, curfew.end_time)),
+                }
+                break
+        rows.append(
+            {
+                "device_id": device.id,
+                "name": device.friendly_name or device.hostname or device.mac,
+                "ip": device.ip,
+                "device_type": device.device_type,
+                "is_safe_mode": device.is_safe_mode,
+                "is_blocked": device.is_blocked,
+                "curfews": len(device.curfews),
+                "state": active["type"] if active else "free",
+                "active_curfew": active,
+            }
+        )
+    return {"now": now.isoformat(), "devices": rows}
 
 
 @router.delete("/curfews/{curfew_id}")
