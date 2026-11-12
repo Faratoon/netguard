@@ -319,6 +319,17 @@ async function loadDns() {
       `<div class="item"><span>Use this DNS server<small>${ins.dns_server}</small></span></div>` +
       ins.steps.map((s) => `<div class="item"><span>${s}</span></div>`).join('');
   } catch (e) { /* ignore */ }
+
+  try {
+    const cov = await api('/api/dns/coverage');
+    $('#dns-coverage').innerHTML = cov.devices.map((d) => `
+      <div class="item">
+        <span>${d.name || d.mac}<small>${d.ip || ''} ${d.is_safe_mode ? '- safe mode' : ''}</small></span>
+        <span>${d.filtered
+          ? `<span class="badge ok">filtered (${d.queries})</span>`
+          : `<span class="badge on">NOT filtered</span>`}</span>
+      </div>`).join('');
+  } catch (e) { /* ignore */ }
 }
 
 $('#btn-dns-start').onclick = async () => { await api('/api/dns/start', { method: 'POST' }); loadDns(); };

@@ -34,6 +34,15 @@ class DnsStats:
     forwarded: int = 0
     errors: int = 0
     recent: list[dict[str, Any]] = field(default_factory=list)
+    clients: dict[str, dict[str, Any]] = field(default_factory=dict)
+
+    def note_client(self, ip: str, blocked: bool) -> None:
+        """Remember that this client used our DNS server (filtered or not)."""
+        entry = self.clients.setdefault(ip, {"queries": 0, "blocked": 0, "last_seen": 0})
+        entry["queries"] += 1
+        entry["last_seen"] = int(time.time())
+        if blocked:
+            entry["blocked"] += 1
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -44,6 +53,7 @@ class DnsStats:
             "forwarded": self.forwarded,
             "errors": self.errors,
             "recent": self.recent[-50:],
+            "clients": self.clients,
         }
 
 
@@ -169,6 +179,7 @@ class DnsFilterServer:
         name = qname.lower().rstrip(".")
 
         blocked, reason, category = self._check(name, client_ip)
+        self.stats.note_client(client_ip, blocked)
         if blocked:
             self.stats.blocked += 1
             self.stats.recent.insert(

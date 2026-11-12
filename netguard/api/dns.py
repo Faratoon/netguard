@@ -127,6 +127,55 @@ def dns_lookup(payload: LookupRequest, session: Session = Depends(get_session)) 
     }
 
 
+@router.get("/coverage")
+def dns_coverage(session: Session = Depends(get_session)) -> dict[str, Any]:
+    """Which devices actually use NetGuard's DNS server (= are filtered).
+
+    A device that never queries us is *not* protected, even if rules exist for
+    it - so this is the list of phones that still need their DNS changed.
+    """
+    import time
+
+    from sqlalchemy import select
+
+    from ..db import Device
+
+    server = _server()
+    clients = (server.stats.clients if server else {}) or {}
+    now = int(time.time())
+    devices = session.scalars(select(Device)).all()
+    rows = []
+    for device in devices:
+        info = clients.get(device.ip or "", {})
+        last_seen = info.get("last_seen")
+        rows.append(
+            {
+                "device_id": device.id,
+                "name": device.friendly_name or device.hostname or device.mac,
+                "ip": device.ip,
+                "mac": device.mac,
+                "device_type": device.device_type,
+                "is_safe_mode": device.is_safe_mode,
+                "is_blocked": device.is_blocked,
+                "filtered": bool(info),
+                "queries": info.get("queries", 0),
+                "blocked_queries": info.get("blocked", 0),
+                "last_seen": last_seen,
+                "last_seen_human": (
+                    f"{now - last_seen}s ago" if last_seen else "never"
+                ),
+            }
+        )
+    rows.sort(key=lambda row: (not row["filtered"], row["name"] or ""))
+    return {
+        "dns_servers": _local_ips(),
+        "devices": rows,
+        "filtered": sum(1 for row in rows if row["filtered"]),
+        "total": len(rows),
+        "unfiltered": [row for row in rows if not row["filtered"]],
+    }
+
+
 @router.get("/instructions")
 def dns_instructions() -> dict[str, Any]:
     """Ready-to-follow steps for putting a device behind the DNS filter."""
