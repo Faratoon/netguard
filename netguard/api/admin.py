@@ -165,6 +165,12 @@ def update_settings(payload: SettingsIn) -> dict[str, Any]:
         cfg.monitoring.sample_interval_seconds = payload.sample_interval_seconds
     if payload.default_ping_target:
         cfg.monitoring.default_ping_target = payload.default_ping_target
+    try:
+        from ..config import save_config
+
+        save_config(cfg)
+    except Exception as exc:  # keep the API working even if the file is read-only
+        return {"status": "updated (not persisted)", "error": str(exc), "settings": get_settings()}
     return {"status": "updated", "settings": get_settings()}
 
 

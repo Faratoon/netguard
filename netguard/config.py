@@ -115,6 +115,50 @@ def load_config(path: str | Path | None = None) -> AppConfig:
     return app
 
 
+def save_config(cfg: AppConfig, path: str | Path | None = None) -> Path:
+    """Persist the current configuration back to the YAML file."""
+    cfg_path = Path(path) if path else DEFAULT_CONFIG_PATH
+    data = {
+        "router": {
+            "vendor": cfg.router.vendor,
+            "host": cfg.router.host,
+            "port": cfg.router.port,
+            "user": cfg.router.user,
+            "password": cfg.router.password,
+            "key_file": cfg.router.key_file,
+            "wan_interface": cfg.router.wan_interface,
+            "lan_interface": cfg.router.lan_interface,
+            "dnsmasq_hosts_file": cfg.router.dnsmasq_hosts_file,
+            "dry_run": cfg.router.dry_run,
+            "timeout": cfg.router.timeout,
+        },
+        "filtering": {
+            "enabled": cfg.filtering.enabled,
+            "default_block_categories": cfg.filtering.default_block_categories,
+            "allowlist_domains": cfg.filtering.allowlist_domains,
+            "blocklist_file": cfg.filtering.blocklist_file,
+        },
+        "storage": {
+            "data_dir": cfg.storage.data_dir,
+            "database_url": cfg.storage.database_url,
+            "max_upload_mb": cfg.storage.max_upload_mb,
+        },
+        "monitoring": {
+            "sample_interval_seconds": cfg.monitoring.sample_interval_seconds,
+            "retention_days": cfg.monitoring.retention_days,
+            "speedtest_enabled": cfg.monitoring.speedtest_enabled,
+            "speedtest_timeout": cfg.monitoring.speedtest_timeout,
+            "default_ping_target": cfg.monitoring.default_ping_target,
+        },
+        "host": cfg.host,
+        "port": cfg.port,
+        "api_token": cfg.api_token,
+        "demo_mode": cfg.demo_mode,
+    }
+    cfg_path.write_text(yaml.safe_dump(data, sort_keys=False))
+    return cfg_path
+
+
 def _env_overrides() -> dict[str, Any]:
     env = os.environ
     out: dict[str, Any] = {}

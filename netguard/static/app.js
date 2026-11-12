@@ -7,6 +7,16 @@ const api = async (path, options = {}) => {
   const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
   if (token) headers['X-NetGuard-Token'] = token;
   const res = await fetch(path, { ...options, headers });
+  if (res.status === 401) {
+    // API token required - ask once and retry
+    const entered = window.prompt('This NetGuard instance is protected.\nEnter the API token:');
+    if (entered) {
+      localStorage.setItem('netguard_token', entered.trim());
+      headers['X-NetGuard-Token'] = entered.trim();
+      const retry = await fetch(path, { ...options, headers });
+      if (retry.ok) return retry.status === 204 ? null : retry.json();
+    }
+  }
   if (!res.ok) {
     let detail = res.statusText;
     try { detail = (await res.json()).detail || detail; } catch (e) {}
