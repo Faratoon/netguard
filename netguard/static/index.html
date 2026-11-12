@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>NetGuard - Router & Network Dashboard</title>
-<link rel="stylesheet" href="/static/styles.css" />
+<link rel="stylesheet" href="/static/styles.css?v=2" />
 </head>
 <body>
 <header>
@@ -13,7 +13,7 @@
   <nav>
     <button class="tab active" data-tab="dashboard">Dashboard</button>
     <button class="tab" data-tab="devices">Devices</button>
-    <button class="tab" data-tab="controls">Parental Controls</button>
+    <button class="tab" data-tab="controls">🚫 Blocking &amp; Parental</button>
     <button class="tab" data-tab="network">Network &amp; Speed</button>
     <button class="tab" data-tab="images">Images</button>
     <button class="tab" data-tab="admin">Admin Data</button>
@@ -59,7 +59,23 @@
 
   <!-- Controls -->
   <section id="controls" class="panel">
+    <div class="banner" id="filter-banner">Checking the filter...</div>
     <div class="grid">
+      <div class="card">
+        <h3>DNS filter (blocks adult sites)</h3>
+        <p class="hint">NetGuard runs a DNS server. Devices that use it get blocked sites (0.0.0.0) while everything else works normally.</p>
+        <div id="dns-status" class="kv"></div>
+        <button id="btn-dns-start">Start DNS filter</button>
+        <button id="btn-dns-stop" class="ghost">Stop</button>
+        <div id="dns-instructions" class="list"></div>
+        <h3 style="margin-top:14px">Test a lookup</h3>
+        <input id="dns-domain" placeholder="site.com" />
+        <input id="dns-client" placeholder="client IP (e.g. 192.168.1.68)" />
+        <button id="btn-dns-lookup">Lookup</button>
+        <div id="dns-result" class="result"></div>
+        <div id="dns-recent" class="list"></div>
+      </div>
+
       <div class="card">
         <h3>Block a domain / site</h3>
         <input id="bl-domain" placeholder="example.com" />
@@ -68,8 +84,18 @@
           <option>video</option><option>risky</option><option>custom</option>
         </select>
         <button id="btn-add-block">Add to blocklist</button>
-        <button class="ghost" id="btn-import-presets">Import adult preset</button>
         <div id="blocklist" class="list"></div>
+      </div>
+
+      <div class="card">
+        <h3>Category lists (one click import)</h3>
+        <p class="hint"><b>Adult</b> is blocked for everyone. <b>Gaming / Social</b> are only blocked on devices with <b>Safe mode</b> switched on.</p>
+        <div id="category-list" class="kv"></div>
+        <button id="btn-import-adult">Import adult list (global)</button>
+        <button id="btn-import-gaming" class="ghost">Import gaming list</button>
+        <button id="btn-import-social" class="ghost">Import social list</button>
+        <button id="btn-import-unsafe" class="ghost">Import risky list</button>
+        <button id="btn-import-apps" class="ghost">Import mic-app list</button>
       </div>
 
       <div class="card">
@@ -112,21 +138,6 @@
         <select id="chk-device"><option value="">global</option></select>
         <button id="btn-check">Check</button>
         <div id="check-result" class="result"></div>
-      </div>
-
-      <div class="card">
-        <h3>DNS filter (blocks adult sites)</h3>
-        <p class="hint">NetGuard runs a DNS server. Devices that use it get blocked sites (0.0.0.0) while everything else works normally.</p>
-        <div id="dns-status" class="kv"></div>
-        <button id="btn-dns-start">Start DNS filter</button>
-        <button id="btn-dns-stop" class="ghost">Stop</button>
-        <div id="dns-instructions" class="list"></div>
-        <h3 style="margin-top:14px">Test a lookup</h3>
-        <input id="dns-domain" placeholder="site.com" />
-        <input id="dns-client" placeholder="client IP (e.g. 192.168.1.68)" />
-        <button id="btn-dns-lookup">Lookup</button>
-        <div id="dns-result" class="result"></div>
-        <div id="dns-recent" class="list"></div>
       </div>
 
       <div class="card">
@@ -211,6 +222,6 @@
   </section>
 </main>
 
-<script src="/static/app.js"></script>
+<script src="/static/app.js?v=2"></script>
 </body>
 </html>

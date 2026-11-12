@@ -9,8 +9,9 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..db import BlockEvent, BlocklistEntry, Curfew, Device, Policy, get_session
+from ..db import BlockEvent, BlocklistEntry, CategoryDomain, Curfew, Device, Policy, get_session
 from ..services import firewall
+from ..services.lists import CATEGORY_LISTS, GLOBAL_CATEGORIES
 from ..services.rules import (
     CATEGORY_PRESETS,
     MIC_SENSITIVE_APPS,
@@ -213,18 +214,31 @@ def add_blocklist(payload: BlocklistIn, session: Session = Depends(get_session))
 
 @router.post("/blocklist/bulk", status_code=201)
 def add_blocklist_bulk(payload: BlocklistBulk, session: Session = Depends(get_session)) -> dict[str, Any]:
+    """Bulk import.
+
+    ``adult`` domains go into the **global** blocklist (blocked for every
+    device), every other category is stored as a **category list** and is only
+    blocked on devices that have safe mode or an explicit category rule on.
+    """
     added = 0
     for raw in payload.domains:
         domain = normalize_domain(raw)
         if not domain:
             continue
-        existing = session.scalars(select(BlocklistEntry).where(BlocklistEntry.domain == domain)).first()
-        if existing:
+        known = session.scalars(select(CategoryDomain).where(CategoryDomain.domain == domain)).first()
+        if known:
             continue
-        session.add(BlocklistEntry(domain=domain, category=payload.category, source=payload.source))
+        session.add(
+            CategoryDomain(domain=domain, category=payload.category, source=payload.source)
+        )
         added += 1
+        if payload.category in GLOBAL_CATEGORIES:
+            if not session.scalars(select(BlocklistEntry).where(BlocklistEntry.domain == domain)).first():
+                session.add(
+                    BlocklistEntry(domain=domain, category=payload.category, source=payload.source)
+                )
     session.flush()
-    return {"added": added}
+    return {"added": added, "category": payload.category, "global": payload.category in GLOBAL_CATEGORIES}
 
 
 @router.post("/blocklist/import-file", status_code=201)
@@ -268,25 +282,45 @@ def delete_blocklist(entry_id: int, session: Session = Depends(get_session)) -> 
 @router.get("/presets")
 def list_presets() -> dict[str, Any]:
     return {
-        "categories": {name: domains for name, domains in CATEGORY_PRESETS.items()},
+        "categories": {name: domains for name, domains in CATEGORY_LISTS.items()},
+        "global_categories": sorted(GLOBAL_CATEGORIES),
+        "safe_mode_categories": sorted(SAFE_MODE_CATEGORIES),
         "mic_sensitive_apps": MIC_SENSITIVE_APPS,
+    }
+
+
+@router.get("/categories")
+def list_categories(session: Session = Depends(get_session)) -> dict[str, Any]:
+    """All category lists with their domain counts."""
+    counts: dict[str, int] = {}
+    for entry in session.scalars(select(CategoryDomain)).all():
+        counts[entry.category] = counts.get(entry.category, 0) + 1
+    return {
+        "categories": {
+            name: {"count": counts.get(name, 0), "size": len(domains), "global": name in GLOBAL_CATEGORIES}
+            for name, domains in CATEGORY_LISTS.items()
+        },
+        "counts": counts,
     }
 
 
 @router.post("/presets/{category}/import")
 def import_preset(category: str, session: Session = Depends(get_session)) -> dict[str, Any]:
-    domains = CATEGORY_PRESETS.get(category)
+    domains = CATEGORY_LISTS.get(category)
     if domains is None:
         raise HTTPException(status_code=404, detail="unknown category")
     added = 0
     for domain in domains:
-        existing = session.scalars(select(BlocklistEntry).where(BlocklistEntry.domain == domain)).first()
-        if existing:
+        known = session.scalars(select(CategoryDomain).where(CategoryDomain.domain == domain)).first()
+        if known:
             continue
-        session.add(BlocklistEntry(domain=domain, category=category, source="preset"))
+        session.add(CategoryDomain(domain=domain, category=category, source="preset"))
         added += 1
+        if category in GLOBAL_CATEGORIES:
+            if not session.scalars(select(BlocklistEntry).where(BlocklistEntry.domain == domain)).first():
+                session.add(BlocklistEntry(domain=domain, category=category, source="preset"))
     session.flush()
-    return {"category": category, "added": added}
+    return {"category": category, "added": added, "global": category in GLOBAL_CATEGORIES}
 
 
 # ---------------------------------------------------------------- evaluation

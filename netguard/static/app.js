@@ -162,11 +162,6 @@ $('#btn-add-block').onclick = async () => {
   await api('/api/controls/blocklist', { method: 'POST', body: JSON.stringify({ domain: $('#bl-domain').value, category: $('#bl-category').value }) });
   $('#bl-domain').value = ''; loadControls();
 };
-$('#btn-import-presets').onclick = async () => {
-  const res = await api('/api/controls/presets/adult/import', { method: 'POST' });
-  alert(`added ${res.added} domains`);
-  loadControls();
-};
 $('#btn-add-policy').onclick = async () => {
   const device_id = $('#pol-device').value ? Number($('#pol-device').value) : null;
   await api('/api/controls/policies', { method: 'POST', body: JSON.stringify({
@@ -253,6 +248,40 @@ $('#btn-save-settings').onclick = async () => {
   alert('settings saved');
 };
 
+/* ------------------------------------------------------- category lists */
+async function loadCategories() {
+  try {
+    const data = await api('/api/controls/categories');
+    $('#category-list').innerHTML = kv(Object.entries(data.categories).map(([name, info]) => [
+      name + (info.global ? ' (global)' : ' (safe mode)'),
+      `${info.count} / ${info.size}`,
+    ]));
+  } catch (e) { /* ignore */ }
+}
+
+async function importPreset(cat) {
+  const res = await api(`/api/controls/presets/${cat}/import`, { method: 'POST' });
+  alert(`${cat}: added ${res.added} domains${res.global ? ' (blocked for everyone)' : ' (blocked on safe-mode devices)'}`);
+  loadControls();
+  loadCategories();
+}
+
+$('#btn-import-adult').onclick = () => importPreset('adult');
+$('#btn-import-gaming').onclick = () => importPreset('gaming');
+$('#btn-import-social').onclick = () => importPreset('social');
+$('#btn-import-unsafe').onclick = () => importPreset('risky');
+$('#btn-import-apps').onclick = async () => {
+  const presets = await api('/api/controls/presets');
+  const domains = [];
+  for (const apps of Object.values(presets.mic_sensitive_apps || {})) {
+    for (const d of apps) domains.push(d);
+  }
+  await api('/api/controls/blocklist/bulk', { method: 'POST', body: JSON.stringify({ domains, category: 'social', source: 'mic-apps' }) });
+  alert(`added ${domains.length} app domains (Discord, TikTok, Snapchat, Zoom...) - blocked for everyone using this DNS`);
+  loadControls();
+  loadCategories();
+};
+
 /* ------------------------------------------------------------------ dns */
 async function loadDns() {
   try {
@@ -272,6 +301,17 @@ async function loadDns() {
     $('#dns-recent').innerHTML = recent.length
       ? recent.slice(0, 12).map((r) => `<div class="item"><span>${r.domain}<small>${r.client} - ${r.reason || ''}</small></span></div>`).join('')
       : '<div class="hint">no blocked lookups yet</div>';
+
+    const banner = $('#filter-banner');
+    if (s.running) {
+      banner.className = 'banner ok';
+      banner.innerHTML = `🛡️ DNS filter is <b>RUNNING</b> on ${(s.listen || []).join(', ') || s.host}:${s.port} — `
+        + `blocked so far: <b>${stats.blocked ?? 0}</b>, passed: <b>${stats.forwarded ?? 0}</b>. `
+        + `Point a device's DNS at ${(s.listen || [])[0] || 'this PC'} to filter it.`;
+    } else {
+      banner.className = 'banner warn';
+      banner.textContent = '⚠️ DNS filter is NOT running — start it below to block sites.';
+    }
   } catch (e) { /* ignore */ }
   try {
     const ins = await api('/api/dns/instructions');
@@ -296,6 +336,7 @@ $('#btn-dns-lookup').onclick = async () => {
   await loadDashboard();
   await loadDevices();
   await loadControls();
+  await loadCategories();
   await loadDns();
   await loadGallery();
   setInterval(loadDashboard, 30000);

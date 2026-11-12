@@ -72,6 +72,23 @@ class BlocklistEntry(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
+class CategoryDomain(Base):
+    """A domain that belongs to a category (adult / social / gaming / risky).
+
+    Adult domains are additionally stored in the global blocklist; the other
+    categories are only blocked on devices that enable them (safe mode or an
+    explicit category rule).
+    """
+
+    __tablename__ = "category_domains"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    domain: Mapped[str] = mapped_column(String(255), index=True)
+    category: Mapped[str] = mapped_column(String(64), default="adult", index=True)
+    source: Mapped[str] = mapped_column(String(64), default="import")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
 class Curfew(Base):
     """Time based restriction for a device."""
 

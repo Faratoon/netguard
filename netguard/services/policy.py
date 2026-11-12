@@ -7,17 +7,42 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..db import BlocklistEntry, Curfew, Device, Policy
+from ..db import BlocklistEntry, CategoryDomain, Curfew, Device, Policy
+from .lists import SAFE_MODE_CATEGORIES
 from .rules import MIC_SENSITIVE_APPS, Decision, domain_matches, in_schedule, normalize_domain
 
-SAFE_MODE_CATEGORIES = {"adult", "social", "gaming", "risky"}
+__all__ = [
+    "SAFE_MODE_CATEGORIES",
+    "evaluate",
+    "device_categories",
+    "find_device_by_ip",
+    "category_of_domain",
+]
 
 
 def device_categories(device: Device | None, default_categories: set[str] | None = None) -> set[str]:
+    """Categories that are blocked for this device."""
     cats = set(default_categories or {"adult"})
     if device is not None and device.is_safe_mode:
         cats |= SAFE_MODE_CATEGORIES
     return cats
+
+
+def category_of_domain(session: Session, domain: str) -> str | None:
+    """Return the category a domain belongs to (adult / social / gaming / risky)."""
+    if not domain:
+        return None
+    domain = normalize_domain(domain)
+    entry = session.scalars(
+        select(CategoryDomain).where(CategoryDomain.domain == domain)
+    ).first()
+    if entry:
+        return entry.category
+    # fall back to a wildcard match ("*.example.com")
+    for candidate in session.scalars(select(CategoryDomain)).all():
+        if domain_matches(domain, candidate.domain):
+            return candidate.category
+    return None
 
 
 def evaluate(
@@ -76,27 +101,45 @@ def evaluate(
         if policy.kind == "category" and policy.category and policy.category in categories:
             return Decision(True, f"category blocked by rule #{policy.id}", policy.category, policy.id)
 
-    # 4) global blocklist
+    # 4) global blocklist - applies to every device
     if targets:
         for entry in session.scalars(select(BlocklistEntry).where(BlocklistEntry.enabled.is_(True))).all():
             if any(domain_matches(t, entry.domain) for t in targets):
                 return Decision(True, f"blocklist ({entry.category})", entry.category, entry.id)
 
-    # 5) safe mode / curfew restrictions
+    # 5) category lists - only for devices that have the category switched on
+    #    (safe mode, an explicit category rule or a curfew in safe mode)
+    blocked_categories = set(categories)
+    for curfew in device.curfews if device is not None else []:
+        if not curfew.enabled:
+            continue
+        if curfew.action != "safe_mode":
+            continue
+        if in_schedule(now, curfew.days, curfew.start_time, curfew.end_time):
+            blocked_categories |= SAFE_MODE_CATEGORIES
+
+    explicit_categories = {
+        policy.category
+        for policy in policies
+        if policy.action == "block" and policy.kind == "category" and applies(policy) and policy.category
+    }
+    blocked_categories |= explicit_categories
+
+    if targets and blocked_categories:
+        for target in targets:
+            category = category_of_domain(session, target)
+            if category and category in blocked_categories:
+                return Decision(True, f"category '{category}' is blocked for this device", category, None)
+
+    # 6) curfews that cut the internet completely
     if device is not None:
-        if device.is_safe_mode and categories & SAFE_MODE_CATEGORIES:
-            hit = next(iter(categories & SAFE_MODE_CATEGORIES))
-            return Decision(True, f"safe mode active (blocks {hit})", hit, None)
         for curfew in device.curfews:
             if not curfew.enabled:
                 continue
-            if not in_schedule(now, curfew.days, curfew.start_time, curfew.end_time):
+            if curfew.action != "block_internet":
                 continue
-            if curfew.action == "block_internet":
+            if in_schedule(now, curfew.days, curfew.start_time, curfew.end_time):
                 return Decision(True, f"curfew '{curfew.label or curfew.id}' active", "curfew", curfew.id)
-            if curfew.action == "safe_mode" and categories & SAFE_MODE_CATEGORIES:
-                hit = next(iter(categories & SAFE_MODE_CATEGORIES))
-                return Decision(True, f"curfew '{curfew.label or curfew.id}' active", hit, curfew.id)
 
     return Decision(False, "allowed")
 

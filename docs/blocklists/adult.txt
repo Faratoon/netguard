@@ -1,0 +1,67 @@
+# Adult sites - one domain per line. Import with:
+#   curl -X POST http://localhost:8765/api/controls/blocklist/bulk \
+#        -H "Content-Type: application/json" \
+#        -d '{"domains":[...],"category":"adult"}'
+# or paste them into Parental Controls -> Block a domain (one per line).
+pornhub.com
+xvideos.com
+xnxx.com
+redtube.com
+youporn.com
+xhamster.com
+tube8.com
+spankbang.com
+fapello.com
+fapello.net
+onlyfans.com
+fanvue.com
+fansly.com
+camwhores.tv
+cam4.com
+chaturbate.com
+stripchat.com
+bongacams.com
+myfreecams.com
+myfreecams.com
+livejasmin.com
+imlive.com
+flirt4free.com
+streamate.com
+thisav.com
+hentai.to
+hentai.tv
+rule34.xxx
+e-hentai.org
+nhentai.net
+hitomi.la
+hanime.tv
+tsumino.moe
+motherless.com
+spankbang.party
+pornhub-premium.com
+xvideos-porn.com
+xhamsterdaily.com
+motherless.com
+penisjax.com
+fap.org
+fucks.tv
+pornhub.com
+erome.com
+pixiv.net
+nhentai.net
+saint.to
+rule34.paheal.net
+e621.info
+booru.tv
+gelbooru.com
+fakku.net
+hitomi.me
+minagosh.pw
+nekohouse.su
+skebby.rip
+adultism.com
+sex.com
+escortbook.com
+backpage.com
+literotica.com
+adultgames.com
